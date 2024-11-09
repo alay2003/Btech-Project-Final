@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f2f2f2; color: #333; display: flex; height: 100vh; margin: 0; }
+        .container { display: flex; flex: 1; }
+
+        /* Sidebar styling */
+        #sidebar {
+            width: 200px;
+            background-color: #001f3f;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #sidebar h2 { margin: 0 0 20px; font-size: 1.2em; }
+        #sidebar button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #sidebar button:hover { background-color: #0056b3; }
+
+        /* Chat window styling */
+        .chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #ffffff;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+            margin: 20px;
+            border-radius: 8px;
+        }
+
+        /* Header with language selection */
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            border-bottom: 1px solid #ccc;
+            align-items: center;
+            background-color: #001f3f;
+            color: white;
+        }
+        .chat-header h1 { font-size: 1.5em; margin: 0; }
+        .language-buttons {
+            display: flex;
+        }
+        .language-buttons button {
+            background-color: #007bff;
+            color: white;
+            padding: 8px 15px;
+            margin-left: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .language-buttons button:hover { background-color: #0056b3; }
+
+        /* Chatbox styling */
+        #chatbox {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+        .message {
+            display: flex;
+            align-items: flex-start;
+            margin: 10px 0;
+        }
+        .message img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        .user-message { color: #007bff; }
+        .bot-message { color: #333; }
+        .message .content {
+            max-width: 70%;
+            background-color: #e6e6e6;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .user .content { background-color: #007bff; color: white; }
+        
+        /* Input section styling */
+        .input-section {
+            display: flex;
+            border-top: 1px solid #ccc;
+            padding: 10px;
+        }
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        #sendButton {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            margin-left: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        #sendButton:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Sidebar -->
+        <div id="sidebar">
+            <h2>Options</h2>
+            <button id="newChatButton">New Chat</button>
+        </div>
+
+        <!-- Chat Window -->
+        <div class="chat-window">
+            <!-- Header with Language Selection -->
+            <div class="chat-header">
+                <h1>Chatbot</h1>
+                <div class="language-buttons">
+                    <button id="englishButton">English</button>
+                    <button id="hindiButton">हिंदी</button>
+                </div>
+            </div>
+
+           <!-- Chatbox -->
+           <div id="chatbox"></div>
+
+           <!-- Input Section -->
+           <div class="input-section">
+                <input type="text" id="userInput" placeholder="Type a message..." autofocus>
+                <button id="sendButton">Send</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    let currentLanguage = "en";  // Default language is English
+
+    document.getElementById("sendButton").onclick = sendMessage;
+    document.getElementById("userInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            sendMessage();
+        }
+    });
+
+    document.getElementById("newChatButton").onclick = function() {
+        document.getElementById("chatbox").innerHTML = "";
+    };
+
+    document.getElementById("englishButton").onclick = function() {
+        currentLanguage = "en";
+        appendMessage("Switched to English", 'bot');
+    };
+
+    document.getElementById("hindiButton").onclick = function() {
+        currentLanguage = "hi";
+        appendMessage("हिंदी में स्विच किया गया", 'bot');
+    };
+
+    async function sendMessage() {
+        let userMessage = document.getElementById("userInput").value;
+        if (!userMessage) return;
+
+        appendMessage(userMessage, 'user');
+        document.getElementById("userInput").value = '';
+        appendMessage("Thinking...", 'bot', true);
+
+        const response = await getChatbotResponse(userMessage);
+        const botMessages = document.querySelectorAll('.bot');
+        botMessages[botMessages.length - 1].remove();
+        appendMessage(response, 'bot');
+    }
+
+    async function getChatbotResponse(question) {
+        const response = await fetch("/get_response", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ question: question, language: currentLanguage })
+        });
+        const data = await response.json();
+        return data.response;
+    }
+
+    function appendMessage(message, sender, isLoading = false) {
+        const messageContainer = document.createElement("div");
+        messageContainer.classList.add("message");
+        messageContainer.classList.add(sender);
+
+        const img = document.createElement("img");
+        img.src = sender === "user" 
+            ? "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTtuphMb4mq-EcVWhMVT8FCkv5dqZGgvn_QiA&s" 
+            : "https://img.freepik.com/free-vector/graident-ai-robot-vectorart_78370-4114.jpg";
+
+        messageContainer.appendChild(img);
+
+        const messageContent = document.createElement("div");
+        messageContent.classList.add("content");
+        messageContent.textContent = message;
+        messageContainer.appendChild(messageContent);
+
+        document.getElementById("chatbox").appendChild(messageContainer);
+        document.getElementById("chatbox").scrollTop = document.getElementById("chatbox").scrollHeight;
+    }
+</script>
+</body>
+</html>
+
